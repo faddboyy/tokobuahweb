@@ -1,406 +1,480 @@
-<!DOCTYPE html>
-<html lang="id">
+<?= $this->extend('layout') ?>
+<?= $this->section('content') ?>
 
-<head>
-    <meta charset="UTF-8">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<div id="appInventory" v-cloak>
 
-        body {
-            font-family: 'DejaVu Sans', sans-serif;
-            font-size: 9px;
-            color: #1a1a2e;
-            background: #fff;
-        }
+    <!-- HEADER PANEL -->
+    <div class="glass-panel p-4 mb-4 border-0 shadow-lg">
+        <div class="row align-items-center g-3">
+            <div class="col-md-6">
+                <h4 class="fw-bold mb-0 text-dark">Asset Toko</h4>
+                <p class="text-muted small mb-3">Manajemen distribusi stok dan aset per wilayah</p>
 
-        /* HEADER */
-        .header {
-            background: #1e3a5f;
-            color: #fff;
-            padding: 14px 20px 12px;
-            margin-bottom: 12px;
-        }
+                <div class="d-flex gap-2">
+                    <select class="form-select modern-input text-primary fw-bold"
+                        v-model="cabangTerpilih"
+                        @change="handleCabangChange"
+                        :disabled="isPetugas">
+                        <option value="">-- Pilih Lokasi Toko --</option>
+                        <?php foreach ($cabang as $c): ?>
+                            <option value="<?= $c['id'] ?>"><?= esc($c['nama']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
 
-        .header-top {
-            display: table;
-            width: 100%;
-        }
-
-        .header-left {
-            display: table-cell;
-            vertical-align: middle;
-            width: 60%;
-        }
-
-        .header-right {
-            display: table-cell;
-            vertical-align: middle;
-            text-align: right;
-            width: 40%;
-        }
-
-        .header h1 {
-            font-size: 16px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-
-        .header .subtitle {
-            font-size: 9px;
-            opacity: 0.85;
-            margin-top: 2px;
-        }
-
-        .badge-type {
-            display: inline-block;
-            background: <?= ($type === 'promo') ? '#f59e0b' : '#10b981' ?>;
-            color: #fff;
-            font-size: 8px;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 20px;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-            text-transform: uppercase;
-        }
-
-        .header-right .meta {
-            font-size: 8px;
-            opacity: 0.85;
-            line-height: 1.6;
-        }
-
-        /* SUMMARY */
-        .summary-row {
-            display: table;
-            width: 100%;
-            margin: 0 0 12px;
-        }
-
-        .summary-cell {
-            display: table-cell;
-            width: 33.33%;
-            padding-right: 6px;
-        }
-
-        .summary-cell:last-child {
-            padding-right: 0;
-        }
-
-        .card {
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 8px 12px;
-            background: #f8fafc;
-        }
-
-        .card-label {
-            font-size: 7px;
-            font-weight: 700;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 3px;
-        }
-
-        .card-value {
-            font-size: 13px;
-            font-weight: 700;
-            color: #1e3a5f;
-        }
-
-        .card-value.green {
-            color: #059669;
-        }
-
-        /* TABLE */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        thead tr {
-            background: #1e3a5f;
-            color: #fff;
-        }
-
-        thead th {
-            padding: 6px 7px;
-            font-size: 7.5px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            text-align: left;
-        }
-
-        thead th.r {
-            text-align: right;
-        }
-
-        tbody tr:nth-child(even) {
-            background: #f1f5f9;
-        }
-
-        tbody tr:nth-child(odd) {
-            background: #fff;
-        }
-
-        tbody td {
-            padding: 5px 7px;
-            border-bottom: 1px solid #e2e8f0;
-            vertical-align: middle;
-            font-size: 8.5px;
-        }
-
-        tbody td.r {
-            text-align: right;
-        }
-
-        .nama-barang {
-            font-weight: 700;
-            color: #1e293b;
-        }
-
-        .nama-jenis {
-            font-size: 7px;
-            color: #64748b;
-        }
-
-        .badge-promo {
-            display: inline-block;
-            background: #fef3c7;
-            color: #b45309;
-            border: 1px solid #fcd34d;
-            font-size: 6.5px;
-            font-weight: 700;
-            padding: 1px 5px;
-            border-radius: 10px;
-        }
-
-        .stock-badge {
-            display: inline-block;
-            padding: 2px 7px;
-            border-radius: 10px;
-            font-size: 8px;
-            font-weight: 700;
-        }
-
-        .stock-ok {
-            background: #dbeafe;
-            color: #1d4ed8;
-        }
-
-        .stock-empty {
-            background: #fee2e2;
-            color: #b91c1c;
-        }
-
-        .line-through {
-            text-decoration: line-through;
-            color: #94a3b8;
-            font-size: 7.5px;
-        }
-
-        .price-promo {
-            color: #059669;
-            font-weight: 700;
-        }
-
-        .margin-pos {
-            color: #059669;
-            font-weight: 700;
-        }
-
-        .margin-neg {
-            color: #dc2626;
-            font-weight: 700;
-        }
-
-        tfoot tr {
-            background: #1e3a5f;
-            color: #fff;
-        }
-
-        tfoot td {
-            padding: 6px 7px;
-            font-size: 8.5px;
-            font-weight: 700;
-        }
-
-        tfoot td.r {
-            text-align: right;
-        }
-
-        /* PAGE FOOTER */
-        .page-footer {
-            margin-top: 10px;
-            padding-top: 6px;
-            border-top: 1px solid #e2e8f0;
-            display: table;
-            width: 100%;
-        }
-
-        .page-footer .left {
-            display: table-cell;
-            font-size: 7px;
-            color: #94a3b8;
-        }
-
-        .page-footer .right {
-            display: table-cell;
-            text-align: right;
-            font-size: 7px;
-            color: #94a3b8;
-        }
-    </style>
-</head>
-
-<body>
-
-    <!-- HEADER -->
-    <div class="header">
-        <div class="header-top">
-            <div class="header-left">
-                <div class="badge-type">
-                    <?= ($type === 'promo') ? '&#9733; Barang Promo Aktif' : 'Semua Stok Terkini' ?>
+                    <button v-if="isOwner"
+                        class="btn btn-primary px-3 shadow-sm d-flex align-items-center gap-2"
+                        @click="openImportModal"
+                        :disabled="!cabangTerpilih">
+                        <i data-lucide="plus-circle" style="width:18px;"></i> Import
+                    </button>
                 </div>
-                <h1>Laporan Aset Toko</h1>
-                <div class="subtitle"><?= esc($cabang['nama']) ?> &mdash; Per <?= date('d F Y', strtotime($today)) ?></div>
+
+                <p v-if="isPetugas" class="text-muted small mt-2 mb-0">
+                    <i data-lucide="info" style="width:12px;"></i>
+                    Anda hanya dapat melihat data cabang yang ditugaskan.
+                </p>
             </div>
-            <div class="header-right">
-                <div class="meta">
-                    Dicetak oleh : Owner<br>
-                    Tanggal&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <?= date('d/m/Y H:i') ?> WIB<br>
-                    Tipe&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <?= ($type === 'promo') ? 'Barang Promo Aktif' : 'Seluruh Stok Terkini' ?>
+
+            <div class="col-md-5 ms-auto">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="p-3 bg-white border rounded-4 shadow-sm">
+                            <small class="text-muted d-block small fw-bold">ESTIMASI ASET</small>
+                            <h4 class="fw-bold mb-0 text-dark">Rp {{ totalAsset.toLocaleString('id-ID') }}</h4>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-white border rounded-4 shadow-sm">
+                            <small class="text-muted d-block small fw-bold">ESTIMASI MARGIN</small>
+                            <h4 class="fw-bold mb-0 text-success">Rp {{ totalMargin.toLocaleString('id-ID') }}</h4>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <?php
-    $totalItems = count($items);
-    $totalPromo = count(array_filter($items, fn($i) => $i['ada_promo'] == 1));
-    ?>
+    <!-- TABEL PANEL -->
+    <div class="glass-panel p-4 border-0 shadow-lg">
 
-    <!-- SUMMARY CARDS -->
-    <div class="summary-row">
-        <div class="summary-cell">
-            <div class="card">
-                <div class="card-label">Total Produk</div>
-                <div class="card-value"><?= $totalItems ?> item<?= ($type === 'semua' && $totalPromo > 0) ? " ({$totalPromo} promo)" : '' ?></div>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="input-group bg-light rounded-3 px-2 border-0 flex-fill shadow-none" style="max-width:400px;">
+                <span class="input-group-text bg-transparent border-0">
+                    <i data-lucide="search" class="text-muted" style="width:18px;"></i>
+                </span>
+                <input type="text" class="form-control bg-transparent border-0 py-2 shadow-none"
+                    placeholder="Cari barang..." v-model="search">
             </div>
-        </div>
-        <div class="summary-cell">
-            <div class="card">
-                <div class="card-label">Estimasi Nilai Aset</div>
-                <div class="card-value">Rp <?= number_format($totalAset, 0, ',', '.') ?></div>
-            </div>
-        </div>
-        <div class="summary-cell">
-            <div class="card">
-                <div class="card-label">Estimasi Total Margin</div>
-                <div class="card-value green">Rp <?= number_format($totalMargin, 0, ',', '.') ?></div>
-            </div>
-        </div>
-    </div>
 
-    <!-- TABLE -->
-    <table>
-        <thead>
-            <tr>
-                <th style="width:3%">#</th>
-                <th style="width:22%">Nama Produk</th>
-                <th style="width:8%">Jenis</th>
-                <th style="width:8%" class="r">Stok</th>
-                <th style="width:12%" class="r">Harga Pokok</th>
-                <th style="width:14%" class="r">Harga Jual</th>
-                <th style="width:10%" class="r">Margin/Unit</th>
-                <th style="width:11%" class="r">Subtotal Aset</th>
-                <th style="width:12%" class="r">Subtotal Margin</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if (empty($items)): ?>
-                <tr>
-                    <td colspan="9" style="text-align:center; padding:20px; color:#94a3b8;">
-                        Tidak ada data<?= ($type === 'promo') ? ' barang promo' : '' ?> untuk cabang ini.
-                    </td>
-                </tr>
-            <?php else: ?>
-                <?php foreach ($items as $no => $item):
-                    $pokok   = (int) $item['harga_pokok'];
-                    $jual    = (int) $item['harga_jual'];
-                    $diskon  = $item['ada_promo'] ? (int) $item['nominal_diskon'] : 0;
-                    $efektif = $jual - $diskon;
-                    $margin  = $efektif - $pokok;
-                    $stock   = (int) $item['stock'];
-                    $subAset = $stock * $pokok;
-                    $subMgn  = $stock * $margin;
-                ?>
-                    <tr>
-                        <td style="color:#94a3b8;"><?= $no + 1 ?></td>
+            <button class="btn btn-outline-success d-flex align-items-center gap-2 px-3"
+                @click="exportCsv"
+                :disabled="!cabangTerpilih || filteredData.length === 0">
+                <i data-lucide="download" style="width:16px;"></i> Export CSV
+            </button>
+        </div>
+
+        <!-- State: belum pilih cabang -->
+        <div v-if="!cabangTerpilih" class="text-center py-5">
+            <i data-lucide="map-pin" class="text-muted mb-3" style="width:40px;height:40px;"></i>
+            <h6 class="text-muted fw-bold">Pilih Cabang untuk memuat data stok</h6>
+        </div>
+
+        <!-- State: loading -->
+        <div v-else-if="loading" class="text-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h6 class="text-muted fw-bold">Memuat data...</h6>
+        </div>
+
+        <!-- State: data kosong -->
+        <div v-else-if="filteredData.length === 0" class="text-center py-5">
+            <i data-lucide="package-x" class="text-muted mb-3" style="width:40px;height:40px;"></i>
+            <h6 class="text-muted fw-bold">
+                <template v-if="search">Tidak ada barang yang cocok dengan "{{ search }}"</template>
+                <template v-else>Belum ada data stok untuk cabang ini</template>
+            </h6>
+        </div>
+
+        <!-- State: ada data -->
+        <div v-else class="table-responsive">
+            <table class="table table-hover align-middle border-0">
+                <thead>
+                    <tr class="text-muted small text-uppercase">
+                        <th>Nama Produk</th>
+                        <th class="text-center">Stok</th>
+                        <th>Harga Pokok</th>
+                        <th>Harga Jual</th>
+                        <th>Margin / Unit</th>
+                        <th>Subtotal Aset</th>
+                        <th>Subtotal Margin</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="item in pagedData" :key="item.id">
                         <td>
-                            <div class="nama-barang">
-                                <?= esc($item['nama_barang']) ?>
-                                <?php if ($item['ada_promo']): ?>
-                                    <span class="badge-promo">PROMO</span>
-                                <?php endif; ?>
+                            <div class="fw-bold d-flex align-items-center gap-2">
+                                {{ item.nama_barang }}
+                                <span v-if="item.ada_promo == 1"
+                                    class="badge bg-white border border-secondary border-opacity-25 text-dark"
+                                    style="font-size:9px;font-weight:700;white-space:nowrap;">
+                                    <i data-lucide="tag" style="width:9px;"></i> PROMO
+                                </span>
                             </div>
+                            <span class="badge bg-light text-primary border small">{{ item.nama_jenis }}</span>
                         </td>
-                        <td><span class="nama-jenis"><?= esc($item['nama_jenis']) ?></span></td>
-                        <td class="r">
-                            <span class="stock-badge <?= $stock > 0 ? 'stock-ok' : 'stock-empty' ?>">
-                                <?= $stock ?> <?= esc($item['nama_satuan']) ?>
+
+                        <td class="text-center">
+                            <span class="badge rounded-pill px-3 py-2 fw-bold"
+                                :class="item.stock > 0 ? 'bg-soft-primary text-primary' : 'bg-soft-danger text-danger'">
+                                {{ item.stock }} {{ item.nama_satuan }}
                             </span>
                         </td>
-                        <td class="r">Rp <?= number_format($pokok, 0, ',', '.') ?></td>
-                        <td class="r">
-                            <?php if ($item['ada_promo']): ?>
-                                <div class="line-through">Rp <?= number_format($jual, 0, ',', '.') ?></div>
-                                <div class="price-promo">Rp <?= number_format($efektif, 0, ',', '.') ?></div>
-                                <div style="font-size:7px;color:#94a3b8;">
-                                    diskon Rp <?= number_format($diskon, 0, ',', '.') ?>
+
+                        <td>Rp {{ Number(item.harga_pokok).toLocaleString('id-ID') }}</td>
+
+                        <td>
+                            <div v-if="item.ada_promo == 1">
+                                <div class="text-muted" style="font-size:11px;text-decoration:line-through;">
+                                    Rp {{ Number(item.harga_jual).toLocaleString('id-ID') }}
                                 </div>
-                            <?php else: ?>
-                                Rp <?= number_format($jual, 0, ',', '.') ?>
-                            <?php endif; ?>
+                                <div class="fw-bold text-success">
+                                    Rp {{ (Number(item.harga_jual) - Number(item.nominal_diskon)).toLocaleString('id-ID') }}
+                                </div>
+                                <div class="text-muted" style="font-size:10px;">
+                                    diskon Rp {{ Number(item.nominal_diskon).toLocaleString('id-ID') }}
+                                </div>
+                            </div>
+                            <div v-else class="fw-bold">
+                                Rp {{ Number(item.harga_jual).toLocaleString('id-ID') }}
+                            </div>
                         </td>
-                        <td class="r <?= $margin >= 0 ? 'margin-pos' : 'margin-neg' ?>">
-                            Rp <?= number_format($margin, 0, ',', '.') ?>
+
+                        <td>
+                            <span :class="marginPerUnit(item) >= 0 ? 'text-success fw-bold' : 'text-danger fw-bold'">
+                                Rp {{ marginPerUnit(item).toLocaleString('id-ID') }}
+                            </span>
                         </td>
-                        <td class="r">Rp <?= number_format($subAset, 0, ',', '.') ?></td>
-                        <td class="r <?= $subMgn >= 0 ? 'margin-pos' : 'margin-neg' ?>">
-                            Rp <?= number_format($subMgn, 0, ',', '.') ?>
+
+                        <td class="fw-bold">
+                            Rp {{ (Number(item.stock) * Number(item.harga_pokok)).toLocaleString('id-ID') }}
+                        </td>
+
+                        <td class="fw-bold text-success">
+                            Rp {{ (Number(item.stock) * marginPerUnit(item)).toLocaleString('id-ID') }}
                         </td>
                     </tr>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </tbody>
-        <tfoot>
-            <tr>
-                <td colspan="7" style="text-align:right; font-size:7.5px; text-transform:uppercase; letter-spacing:0.5px;">
-                    Total Keseluruhan
-                </td>
-                <td class="r">Rp <?= number_format($totalAset, 0, ',', '.') ?></td>
-                <td class="r">Rp <?= number_format($totalMargin, 0, ',', '.') ?></td>
-            </tr>
-        </tfoot>
-    </table>
-
-    <!-- FOOTER -->
-    <div class="page-footer">
-        <div class="left">
-            * Harga efektif memperhitungkan diskon promo yang sedang aktif pada tanggal cetak.
+                </tbody>
+            </table>
         </div>
-        <div class="right">
-            Dokumen dibuat otomatis oleh sistem &mdash; <?= date('d/m/Y H:i') ?> WIB
+
+        <!-- Pagination -->
+        <div v-if="cabangTerpilih && !loading && totalPage > 1"
+            class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+            <small class="text-muted">Total {{ filteredData.length }} barang</small>
+            <div class="d-flex gap-1">
+                <button class="btn btn-sm btn-outline-secondary" :disabled="currentPage === 1" @click="currentPage--">
+                    <i data-lucide="chevron-left" style="width:14px;"></i>
+                </button>
+                <span class="px-3 d-flex align-items-center fw-bold small text-primary bg-primary bg-opacity-10 rounded-3">
+                    {{ currentPage }} / {{ totalPage }}
+                </span>
+                <button class="btn btn-sm btn-outline-secondary" :disabled="currentPage >= totalPage" @click="currentPage++">
+                    <i data-lucide="chevron-right" style="width:14px;"></i>
+                </button>
+            </div>
         </div>
     </div>
 
-</body>
+    <!-- IMPORT MODAL - hanya dimuat jika owner -->
+    <div v-if="isOwner" class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header">
+                    <h5 class="fw-bold m-0" id="importModalLabel">Import Master Barang</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between mb-3">
+                        <input type="text" class="form-control me-2"
+                            placeholder="Filter barang..." v-model="searchImport">
+                        <button class="btn btn-outline-primary btn-sm" @click="toggleCheckAll">
+                            {{ isAllChecked ? 'Uncheck All' : 'Check All' }}
+                        </button>
+                    </div>
 
-</html>
+                    <div v-if="Object.keys(groupedAvailableBarang).length === 0" class="text-center py-4">
+                        <i data-lucide="package-check" class="text-muted mb-2" style="width:32px;height:32px;"></i>
+                        <p class="text-muted mb-0 small">
+                            <template v-if="searchImport">Tidak ada barang cocok dengan pencarian.</template>
+                            <template v-else>Semua barang sudah diimport ke cabang ini.</template>
+                        </p>
+                    </div>
+
+                    <div v-else style="max-height:400px;overflow-y:auto;">
+                        <div v-for="(items, jenis) in groupedAvailableBarang" :key="jenis" class="mb-3">
+                            <div class="small fw-bold text-muted mb-2">{{ jenis }}</div>
+                            <div class="row">
+                                <div class="col-md-4 mb-2" v-for="b in items" :key="b.id">
+                                    <label class="border rounded p-2 w-100 d-block"
+                                        style="cursor:pointer;"
+                                        :class="importIds.includes(b.id) ? 'border-primary bg-light' : ''">
+                                        <input type="checkbox" :value="b.id" v-model="importIds" class="me-2">
+                                        {{ b.nama }}
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <span class="text-muted small me-auto">{{ importIds.length }} barang dipilih</span>
+                    <button class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button class="btn btn-primary"
+                        :disabled="importIds.length === 0 || loadingImport"
+                        @click="saveImport">
+                        <span v-if="loadingImport" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        Import{{ importIds.length > 0 ? ' (' + importIds.length + ')' : '' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="liveToast" class="toast border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex p-3 bg-white rounded">
+                <div class="me-3 text-primary fw-bold">&#10003;</div>
+                <div class="toast-body fw-bold small">{{ toastMessage }}</div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const {
+        createApp
+    } = Vue;
+    createApp({
+        data() {
+            return {
+                userRole: '<?= esc($role, "js") ?>',
+                userCabangId: '<?= esc($user_cabang_id, "js") ?>',
+                cabangTerpilih: '',
+                inventory: [],
+                availableBarang: [],
+                importIds: [],
+                search: '',
+                searchImport: '',
+                toastMessage: '',
+                currentPage: 1,
+                itemsPerPage: 10,
+                loading: false,
+                loadingImport: false,
+                allCabang: <?= json_encode($cabang) ?>
+            };
+        },
+        computed: {
+            isOwner() {
+                return this.userRole === 'owner';
+            },
+            isAdmin() {
+                return this.userRole === 'admin';
+            },
+            isPetugas() {
+                return this.userRole === 'petugas';
+            },
+            filteredData() {
+                if (!this.search.trim()) return this.inventory;
+                const q = this.search.toLowerCase();
+                return this.inventory.filter(i =>
+                    i.nama_barang.toLowerCase().includes(q) ||
+                    i.nama_jenis.toLowerCase().includes(q)
+                );
+            },
+            pagedData() {
+                const start = (this.currentPage - 1) * this.itemsPerPage;
+                return this.filteredData.slice(start, start + this.itemsPerPage);
+            },
+            totalPage() {
+                return Math.ceil(this.filteredData.length / this.itemsPerPage) || 1;
+            },
+            totalAsset() {
+                return this.filteredData.reduce(
+                    (s, i) => s + Number(i.stock) * Number(i.harga_pokok), 0
+                );
+            },
+            totalMargin() {
+                return this.filteredData.reduce(
+                    (s, i) => s + Number(i.stock) * this.marginPerUnit(i), 0
+                );
+            },
+            groupedAvailableBarang() {
+                const q = this.searchImport.toLowerCase();
+                const f = q ?
+                    this.availableBarang.filter(b => b.nama.toLowerCase().includes(q)) :
+                    this.availableBarang;
+                const g = {};
+                f.forEach(item => {
+                    if (!g[item.nama_jenis]) g[item.nama_jenis] = [];
+                    g[item.nama_jenis].push(item);
+                });
+                return g;
+            },
+            isAllChecked() {
+                return this.availableBarang.length > 0 &&
+                    this.importIds.length === this.availableBarang.length;
+            }
+        },
+        watch: {
+            search() {
+                this.currentPage = 1;
+            },
+            totalPage(val) {
+                if (this.currentPage > val) this.currentPage = val;
+            }
+        },
+        mounted() {
+            if (this.isPetugas && this.userCabangId) {
+                this.cabangTerpilih = this.userCabangId;
+                this.loadInventory();
+            }
+            lucide.createIcons();
+        },
+        updated() {
+            lucide.createIcons();
+        },
+        methods: {
+            marginPerUnit(item) {
+                const pokok = Number(item.harga_pokok);
+                const jual = Number(item.harga_jual);
+                const diskon = item.ada_promo == 1 ? Number(item.nominal_diskon) : 0;
+                return (jual - diskon) - pokok;
+            },
+            handleCabangChange() {
+                this.currentPage = 1;
+                this.inventory = [];
+                this.search = '';
+                this.loadInventory();
+            },
+            loadInventory() {
+                if (!this.cabangTerpilih) return;
+                this.loading = true;
+                axios.get('<?= base_url("aset-toko/list") ?>/' + this.cabangTerpilih)
+                    .then(r => {
+                        this.inventory = r.data.data ?? [];
+                    })
+                    .catch(() => {
+                        this.showToast('Gagal memuat data. Silakan coba lagi.');
+                    })
+                    .finally(() => {
+                        this.loading = false;
+                    });
+            },
+            openImportModal() {
+                if (!this.isOwner) return;
+                axios.get('<?= base_url("aset-toko/get-available-barang") ?>/' + this.cabangTerpilih)
+                    .then(r => {
+                        this.availableBarang = r.data.data ?? [];
+                        this.importIds = [];
+                        this.searchImport = '';
+                        new bootstrap.Modal(document.getElementById('importModal')).show();
+                    })
+                    .catch(() => {
+                        this.showToast('Gagal memuat daftar barang.');
+                    });
+            },
+            toggleCheckAll() {
+                this.importIds = this.isAllChecked ?
+                    [] :
+                    this.availableBarang.map(b => b.id);
+            },
+            saveImport() {
+                if (!this.isOwner || this.importIds.length === 0) return;
+                this.loadingImport = true;
+                axios.post('<?= base_url("aset-toko/import") ?>', {
+                        cabang_id: this.cabangTerpilih,
+                        barang_ids: this.importIds
+                    })
+                    .then(r => {
+                        bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
+                        this.loadInventory();
+                        this.showToast(r.data.message ?? 'Berhasil import');
+                    })
+                    .catch(err => {
+                        const msg = err.response?.data?.messages?.error ?? 'Gagal import. Silakan coba lagi.';
+                        this.showToast(msg);
+                    })
+                    .finally(() => {
+                        this.loadingImport = false;
+                    });
+            },
+            showToast(msg) {
+                this.toastMessage = msg;
+                const el = document.getElementById('liveToast');
+                if (el) new bootstrap.Toast(el).show();
+            },
+            exportCsv() {
+                const cn = this.allCabang.find(c => c.id == this.cabangTerpilih)?.nama ?? 'cabang';
+                const headers = [
+                    'Nama Produk', 'Jenis', 'Satuan', 'Stok',
+                    'Harga Pokok', 'Harga Jual', 'Diskon', 'Harga Efektif',
+                    'Margin/Unit', 'Subtotal Aset', 'Subtotal Margin', 'Promo'
+                ];
+                const rows = this.filteredData.map(i => {
+                    const p = Number(i.harga_pokok);
+                    const j = Number(i.harga_jual);
+                    const d = i.ada_promo == 1 ? Number(i.nominal_diskon) : 0;
+                    const e = j - d;
+                    const m = e - p;
+                    const s = Number(i.stock);
+                    return [
+                        '"' + i.nama_barang + '"',
+                        '"' + i.nama_jenis + '"',
+                        '"' + i.nama_satuan + '"',
+                        s, p, j, d, e, m,
+                        s * p,
+                        s * m,
+                        i.ada_promo == 1 ? 'Ya' : '-'
+                    ].join(',');
+                });
+
+                const tA = this.filteredData.reduce((s, i) => s + Number(i.stock) * Number(i.harga_pokok), 0);
+                const tM = this.filteredData.reduce((s, i) => s + Number(i.stock) * this.marginPerUnit(i), 0);
+                rows.push('"TOTAL","","","","","","","","",' + tA + ',' + tM + ',""');
+
+                const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+                const blob = new Blob([csv], {
+                    type: 'text/csv;charset=utf-8;'
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'aset-toko_' + cn + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        }
+    }).mount('#appInventory');
+</script>
+
+<style>
+    .bg-soft-primary {
+        background: rgba(13, 110, 253, 0.1);
+    }
+
+    .bg-soft-danger {
+        background: rgba(220, 53, 69, 0.1);
+    }
+
+    [v-cloak] {
+        display: none;
+    }
+</style>
+
+<?= $this->endSection() ?>

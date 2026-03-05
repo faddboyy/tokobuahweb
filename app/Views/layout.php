@@ -262,6 +262,16 @@
                 <a href="<?= base_url('suplier') ?>" class="nav-link-custom <?= url_is('suplier*') ? 'active' : '' ?>">
                     <i data-lucide="truck" style="width:18px"></i> Data Supplier
                 </a>
+                <div class="nav-group-label">Inventory</div>
+
+                <a href="<?= base_url('aset-gudang') ?>" class="nav-link-custom <?= url_is('aset-gudang*') ? 'active' : '' ?>">
+                    <i data-lucide="warehouse" style="width:18px"></i> Aset Gudang
+                </a>
+
+                <a href="<?= base_url('aset-toko') ?>" class="nav-link-custom <?= url_is('aset-toko*') ? 'active' : '' ?>">
+                    <i data-lucide="store" style="width:18px"></i> Aset Toko
+                </a>
+
 
                 <div class="nav-group-label">Transaksi Gudang</div>
 

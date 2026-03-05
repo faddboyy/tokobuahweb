@@ -58,6 +58,8 @@
     <div class="glass-panel p-4 border-0 shadow-lg">
 
         <div class="d-flex justify-content-between align-items-center mb-4">
+
+            <!-- Search -->
             <div class="input-group bg-light rounded-3 px-2 border-0 flex-fill shadow-none" style="max-width:400px;">
                 <span class="input-group-text bg-transparent border-0">
                     <i data-lucide="search" class="text-muted" style="width:18px;"></i>
@@ -66,11 +68,24 @@
                     placeholder="Cari barang..." v-model="search">
             </div>
 
-            <button class="btn btn-outline-success d-flex align-items-center gap-2 px-3"
-                @click="exportCsv"
-                :disabled="!cabangTerpilih || filteredData.length === 0">
-                <i data-lucide="download" style="width:16px;"></i> Export CSV
-            </button>
+            <!-- Tombol PDF (owner only) -->
+            <div v-if="isOwner" class="d-flex gap-2">
+                <button
+                    class="btn btn-outline-primary d-flex align-items-center gap-2 px-3"
+                    @click="printPdf('semua')"
+                    :disabled="!cabangTerpilih || inventory.length === 0">
+                    <i data-lucide="file-text" style="width:16px;"></i> PDF Semua
+                </button>
+                <button
+                    class="btn btn-outline-warning d-flex align-items-center gap-2 px-3"
+                    @click="printPdf('promo')"
+                    :disabled="!cabangTerpilih || jumlahPromo === 0">
+                    <i data-lucide="tag" style="width:16px;"></i>
+                    PDF Promo
+                    <span v-if="jumlahPromo > 0"
+                        class="badge bg-warning text-dark ms-1">{{ jumlahPromo }}</span>
+                </button>
+            </div>
         </div>
 
         <!-- State: belum pilih cabang -->
@@ -186,7 +201,7 @@
         </div>
     </div>
 
-    <!-- IMPORT MODAL - hanya dimuat jika owner -->
+    <!-- IMPORT MODAL -->
     <div v-if="isOwner" class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
@@ -252,7 +267,7 @@
         </div>
     </div>
 
-</div>
+</div><!-- #appInventory -->
 
 <script>
     const {
@@ -274,9 +289,10 @@
                 itemsPerPage: 10,
                 loading: false,
                 loadingImport: false,
-                allCabang: <?= json_encode($cabang) ?>
+                allCabang: <?= json_encode($cabang) ?>,
             };
         },
+
         computed: {
             isOwner() {
                 return this.userRole === 'owner';
@@ -287,6 +303,7 @@
             isPetugas() {
                 return this.userRole === 'petugas';
             },
+
             filteredData() {
                 if (!this.search.trim()) return this.inventory;
                 const q = this.search.toLowerCase();
@@ -312,6 +329,9 @@
                     (s, i) => s + Number(i.stock) * this.marginPerUnit(i), 0
                 );
             },
+            jumlahPromo() {
+                return this.inventory.filter(i => i.ada_promo == 1).length;
+            },
             groupedAvailableBarang() {
                 const q = this.searchImport.toLowerCase();
                 const f = q ?
@@ -327,16 +347,18 @@
             isAllChecked() {
                 return this.availableBarang.length > 0 &&
                     this.importIds.length === this.availableBarang.length;
-            }
+            },
         },
+
         watch: {
             search() {
                 this.currentPage = 1;
             },
             totalPage(val) {
                 if (this.currentPage > val) this.currentPage = val;
-            }
+            },
         },
+
         mounted() {
             if (this.isPetugas && this.userCabangId) {
                 this.cabangTerpilih = this.userCabangId;
@@ -347,6 +369,7 @@
         updated() {
             lucide.createIcons();
         },
+
         methods: {
             marginPerUnit(item) {
                 const pokok = Number(item.harga_pokok);
@@ -354,12 +377,14 @@
                 const diskon = item.ada_promo == 1 ? Number(item.nominal_diskon) : 0;
                 return (jual - diskon) - pokok;
             },
+
             handleCabangChange() {
                 this.currentPage = 1;
                 this.inventory = [];
                 this.search = '';
                 this.loadInventory();
             },
+
             loadInventory() {
                 if (!this.cabangTerpilih) return;
                 this.loading = true;
@@ -374,6 +399,7 @@
                         this.loading = false;
                     });
             },
+
             openImportModal() {
                 if (!this.isOwner) return;
                 axios.get('<?= base_url("aset-toko/get-available-barang") ?>/' + this.cabangTerpilih)
@@ -387,17 +413,19 @@
                         this.showToast('Gagal memuat daftar barang.');
                     });
             },
+
             toggleCheckAll() {
                 this.importIds = this.isAllChecked ?
                     [] :
                     this.availableBarang.map(b => b.id);
             },
+
             saveImport() {
                 if (!this.isOwner || this.importIds.length === 0) return;
                 this.loadingImport = true;
                 axios.post('<?= base_url("aset-toko/import") ?>', {
                         cabang_id: this.cabangTerpilih,
-                        barang_ids: this.importIds
+                        barang_ids: this.importIds,
                     })
                     .then(r => {
                         bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
@@ -412,54 +440,20 @@
                         this.loadingImport = false;
                     });
             },
+
+            // Buka PDF di tab baru — type: 'semua' | 'promo'
+            printPdf(type) {
+                if (!this.isOwner || !this.cabangTerpilih) return;
+                const url = `<?= base_url('aset-toko/print-pdf') ?>/${this.cabangTerpilih}/${type}`;
+                window.open(url, '_blank');
+            },
+
             showToast(msg) {
                 this.toastMessage = msg;
                 const el = document.getElementById('liveToast');
                 if (el) new bootstrap.Toast(el).show();
             },
-            exportCsv() {
-                const cn = this.allCabang.find(c => c.id == this.cabangTerpilih)?.nama ?? 'cabang';
-                const headers = [
-                    'Nama Produk', 'Jenis', 'Satuan', 'Stok',
-                    'Harga Pokok', 'Harga Jual', 'Diskon', 'Harga Efektif',
-                    'Margin/Unit', 'Subtotal Aset', 'Subtotal Margin', 'Promo'
-                ];
-                const rows = this.filteredData.map(i => {
-                    const p = Number(i.harga_pokok);
-                    const j = Number(i.harga_jual);
-                    const d = i.ada_promo == 1 ? Number(i.nominal_diskon) : 0;
-                    const e = j - d;
-                    const m = e - p;
-                    const s = Number(i.stock);
-                    return [
-                        '"' + i.nama_barang + '"',
-                        '"' + i.nama_jenis + '"',
-                        '"' + i.nama_satuan + '"',
-                        s, p, j, d, e, m,
-                        s * p,
-                        s * m,
-                        i.ada_promo == 1 ? 'Ya' : '-'
-                    ].join(',');
-                });
-
-                const tA = this.filteredData.reduce((s, i) => s + Number(i.stock) * Number(i.harga_pokok), 0);
-                const tM = this.filteredData.reduce((s, i) => s + Number(i.stock) * this.marginPerUnit(i), 0);
-                rows.push('"TOTAL","","","","","","","","",' + tA + ',' + tM + ',""');
-
-                const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
-                const blob = new Blob([csv], {
-                    type: 'text/csv;charset=utf-8;'
-                });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'aset-toko_' + cn + '_' + new Date().toISOString().slice(0, 10) + '.csv';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }
-        }
+        },
     }).mount('#appInventory');
 </script>
 

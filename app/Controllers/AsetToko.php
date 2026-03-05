@@ -16,18 +16,19 @@ class AsetToko extends BaseController
         $this->model = new InventoryModel();
     }
 
+    // ─────────────────────────────────────────────────────────
+    // Halaman utama
+    // ─────────────────────────────────────────────────────────
     public function index()
     {
         $db   = \Config\Database::connect();
         $role = session()->get('role');
 
         if ($role === 'petugas') {
-            // Petugas hanya bisa lihat cabangnya sendiri
             $data['cabang'] = $db->table('cabang')
                 ->where('id', session()->get('cabang_id'))
                 ->get()->getResultArray();
         } else {
-            // Owner & admin bisa filter semua cabang
             $data['cabang'] = $db->table('cabang')->get()->getResultArray();
         }
 
@@ -38,12 +39,14 @@ class AsetToko extends BaseController
         return view('inventory/aset_toko', $data);
     }
 
+    // ─────────────────────────────────────────────────────────
+    // Data stok per cabang (JSON untuk Vue)
+    // ─────────────────────────────────────────────────────────
     public function list($cabang_id)
     {
         $role       = session()->get('role');
         $userCabang = (int) session()->get('cabang_id');
 
-        // Guard: petugas tidak boleh akses cabang lain
         if ($role === 'petugas' && (int) $cabang_id !== $userCabang) {
             return $this->failForbidden('Akses ditolak');
         }
@@ -84,9 +87,11 @@ class AsetToko extends BaseController
         return $this->respond(['data' => $data]);
     }
 
+    // ─────────────────────────────────────────────────────────
+    // Barang yang belum ada di cabang (untuk modal import)
+    // ─────────────────────────────────────────────────────────
     public function getAvailableBarang($cabang_id)
     {
-        // Hanya owner yang boleh import
         if (session()->get('role') !== 'owner') {
             return $this->failForbidden('Akses ditolak');
         }
@@ -104,9 +109,11 @@ class AsetToko extends BaseController
         return $this->respond(['data' => $data]);
     }
 
+    // ─────────────────────────────────────────────────────────
+    // Import barang ke cabang
+    // ─────────────────────────────────────────────────────────
     public function import()
     {
-        // Hanya owner yang boleh import
         if (session()->get('role') !== 'owner') {
             return $this->failForbidden('Akses ditolak');
         }
@@ -136,9 +143,11 @@ class AsetToko extends BaseController
         ]);
     }
 
+    // ─────────────────────────────────────────────────────────
+    // Hapus barang dari cabang
+    // ─────────────────────────────────────────────────────────
     public function remove()
     {
-        // Hanya owner yang boleh remove
         if (session()->get('role') !== 'owner') {
             return $this->failForbidden('Akses ditolak');
         }
@@ -148,23 +157,30 @@ class AsetToko extends BaseController
         return $this->respond(['message' => 'Barang dihapus dari cabang']);
     }
 
+    // ─────────────────────────────────────────────────────────
+    // Print PDF — semua stok atau promo saja (owner only)
+    // GET aset-toko/print-pdf/{cabang_id}/semua
+    // GET aset-toko/print-pdf/{cabang_id}/promo
+    // ─────────────────────────────────────────────────────────
     public function printPdf($cabang_id, string $type = 'semua')
     {
-        // Hanya owner yang boleh print
         if (session()->get('role') !== 'owner') {
             return $this->failForbidden('Akses ditolak');
+        }
+
+        // Validasi nilai type
+        if (!in_array($type, ['semua', 'promo'])) {
+            return $this->failNotFound('Tipe laporan tidak valid');
         }
 
         $db    = \Config\Database::connect();
         $today = (new \DateTime('now', new \DateTimeZone('Asia/Jakarta')))->format('Y-m-d');
 
-        // Info cabang
         $cabang = $db->table('cabang')->where('id', $cabang_id)->get()->getRowArray();
         if (!$cabang) {
             return $this->failNotFound('Cabang tidak ditemukan');
         }
 
-        // Query dasar sama seperti list(), + filter promo jika type=promo
         $sql = "
             SELECT
                 inv.stock,
@@ -202,24 +218,24 @@ class AsetToko extends BaseController
 
         $items = $db->query($sql, $params)->getResultArray();
 
-        // Hitung total
-        $totalAset   = array_sum(array_map(fn($i) => $i['stock'] * $i['harga_pokok'], $items));
+        $totalAset   = array_sum(array_map(
+            fn($i) => $i['stock'] * $i['harga_pokok'],
+            $items
+        ));
         $totalMargin = array_sum(array_map(function ($i) {
             $efektif = $i['harga_jual'] - ($i['ada_promo'] ? $i['nominal_diskon'] : 0);
             return $i['stock'] * ($efektif - $i['harga_pokok']);
         }, $items));
 
-        // Render view HTML khusus DomPDF
         $html = view('inventory/pdf_aset_toko', [
             'cabang'      => $cabang,
             'items'       => $items,
-            'type'        => $type,
+            'type'        => $type,   // 'semua' | 'promo'
             'today'       => $today,
             'totalAset'   => $totalAset,
             'totalMargin' => $totalMargin,
         ]);
 
-        // Generate PDF dengan DomPDF
         $options = new \Dompdf\Options();
         $options->set('defaultFont', 'DejaVu Sans');
         $options->set('isHtml5ParserEnabled', true);
@@ -230,9 +246,9 @@ class AsetToko extends BaseController
         $dompdf->render();
 
         $slug     = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $cabang['nama']));
-        $filename = 'aset-toko_' . ($type === 'promo' ? 'promo_' : 'semua_') . $slug . '_' . $today . '.pdf';
+        $filename = 'aset-toko_' . $type . '_' . $slug . '_' . $today . '.pdf';
 
-        // Stream langsung ke browser (false = inline/preview, true = download)
+        // false = preview di browser, true = force download
         $dompdf->stream($filename, ['Attachment' => false]);
         exit;
     }

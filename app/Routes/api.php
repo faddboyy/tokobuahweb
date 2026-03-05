@@ -53,13 +53,11 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {
         });
     });
 
-    $routes->group('aset-toko', function ($routes) {
-        $routes->get('list/(:num)', 'AsetToko::list/$1');
-        $routes->get('get-available-barang/(:num)', 'AsetToko::getAvailableBarang/$1');
-        $routes->post('import', 'AsetToko::import');
-        $routes->post('remove', 'AsetToko::remove');
-        $routes->get('print-pdf/(:num)/(:alpha)', 'AsetToko::printPdf/$1/$2');
-    });
+    $routes->get('aset-toko/list/(:num)',                   'AsetToko::list/$1');
+    $routes->get('aset-toko/get-available-barang/(:num)',   'AsetToko::getAvailableBarang/$1');
+    $routes->post('aset-toko/import',                       'AsetToko::import');
+    $routes->post('aset-toko/remove',                       'AsetToko::remove');
+    $routes->get('aset-toko/print-pdf/(:num)/(:segment)',   'AsetToko::printPdf/$1/$2');
 
     // Diskon Terbatas — owner only (guard di controller)
     $routes->get('diskon-terbatas',              'DiskonTerbatas::index');

@@ -183,7 +183,7 @@
                 </a>
 
                 <a href="<?= base_url('cabang') ?>" class="nav-link-custom <?= url_is('cabang*') ? 'active' : '' ?>">
-                    <i data-lucide="map-pin" style="width:18px"></i> Cabang Toko
+                    <i data-lucide="map-pin" style="width:18px"></i> Data Toko
                 </a>
 
                 <a href="<?= base_url('suplier') ?>" class="nav-link-custom <?= url_is('suplier*') ? 'active' : '' ?>">

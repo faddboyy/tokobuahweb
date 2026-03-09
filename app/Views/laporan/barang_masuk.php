@@ -3,35 +3,88 @@
 
 <div id="app" v-cloak class="container-fluid py-4">
 
-    <!-- ══ HEADER ══════════════════════════════════════════════════════════ -->
-    <div class="glass-panel p-4 mb-4 border-0 shadow-sm"
-        style="border-radius:20px;background:linear-gradient(145deg,#ffffff,#f8f9fa)">
-        <div class="row align-items-center">
-            <div class="col-md-7">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="bg-success bg-opacity-10 p-3 rounded-4 text-success">
-                        <i data-lucide="package-check" style="width:32px;height:32px"></i>
-                    </div>
-                    <div>
-                        <h4 class="fw-bold mb-0 text-dark">Laporan Barang Masuk</h4>
-                        <p class="text-muted small mb-0">Riwayat penerimaan barang dari gudang ke cabang / toko</p>
-                    </div>
+    <!-- ══ TOAST ════════════════════════════════════════════════════════════ -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:9999">
+        <div v-for="(t,i) in toasts" :key="t.id"
+            class="toast show align-items-center border-0 shadow-lg mb-2"
+            :class="'toast-' + t.type" role="alert">
+            <div class="d-flex">
+                <div class="toast-body d-flex align-items-center gap-2">
+                    <i :data-lucide="t.icon" style="width:16px"></i>
+                    <span>{{ t.message }}</span>
                 </div>
-            </div>
-            <div class="col-md-5 text-md-end mt-3 mt-md-0">
-                <!-- <button class="btn btn-outline-dark btn-sm rounded-3 px-3 fw-bold"
-                    @click="exportCSV" :disabled="!allRows.length">
-                    <i data-lucide="download" class="me-1" style="width:16px"></i> Export CSV
-                </button> -->
+                <button class="btn-close btn-close-white me-2 m-auto" @click="toasts.splice(i,1)"></button>
             </div>
         </div>
     </div>
 
-    <!-- ══ FILTER ═══════════════════════════════════════════════════════════ -->
+    <!-- ══ MODAL VOID ════════════════════════════════════════════════════════ -->
+    <div class="modal fade" id="modalVoid" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius:16px;overflow:hidden">
+                <div class="modal-header border-0"
+                    style="background:linear-gradient(135deg,#7f1d1d,#dc2626);color:#fff">
+                    <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                        <i data-lucide="ban" style="width:20px"></i>
+                        Void Barang Masuk
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert border-0 mb-3 d-flex gap-2 align-items-start"
+                        style="background:#fef2f2;color:#991b1b;border-radius:10px">
+                        <i data-lucide="alert-triangle" style="width:18px;flex-shrink:0;margin-top:2px"></i>
+                        <div class="small">
+                            Tindakan ini akan <strong>mengurangi stok inventory</strong> cabang sebesar
+                            qty yang pernah masuk dan mengubah status menjadi
+                            <strong>dibatalkan</strong>. Tidak dapat diurungkan.
+                        </div>
+                    </div>
+                    <div class="mb-3 p-3 rounded-3 border" style="background:#f8fafc;font-size:.85rem">
+                        <div class="text-muted small mb-1">Kode Masuk</div>
+                        <div class="fw-bold font-mono">{{ voidTarget?.kode_masuk }}</div>
+                    </div>
+                    <label class="form-label fw-semibold small">
+                        Alasan Void <span class="text-danger">*</span>
+                    </label>
+                    <textarea class="form-control rounded-3" rows="3"
+                        placeholder="Contoh: Data duplikat, kesalahan input, dll."
+                        v-model="voidReason"
+                        :class="{'is-invalid': voidReasonError}"></textarea>
+                    <div v-if="voidReasonError" class="invalid-feedback">{{ voidReasonError }}</div>
+                </div>
+                <div class="modal-footer border-0 bg-light gap-2">
+                    <button class="btn btn-light border rounded-3 fw-semibold px-4"
+                        data-bs-dismiss="modal">Batal</button>
+                    <button class="btn btn-danger rounded-3 fw-bold px-4 d-flex align-items-center gap-2"
+                        @click="submitVoid" :disabled="voidLoading">
+                        <span v-if="voidLoading" class="spinner-border spinner-border-sm"></span>
+                        <i v-else data-lucide="ban" style="width:15px"></i>
+                        Konfirmasi Void
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ HEADER ════════════════════════════════════════════════════════════ -->
+    <div class="glass-panel p-4 mb-4 border-0 shadow-sm"
+        style="border-radius:20px;background:linear-gradient(145deg,#ffffff,#f8f9fa)">
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-success bg-opacity-10 p-3 rounded-4 text-success">
+                <i data-lucide="package-check" style="width:32px;height:32px"></i>
+            </div>
+            <div>
+                <h4 class="fw-bold mb-0 text-dark">Laporan Barang Masuk</h4>
+                <p class="text-muted small mb-0">Riwayat penerimaan barang dari gudang ke cabang / toko</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ FILTER ════════════════════════════════════════════════════════════ -->
     <div class="glass-panel p-3 mb-4 border-0 shadow-sm bg-white" style="border-radius:16px">
         <div class="row g-3 align-items-end">
 
-            <!-- Cari -->
             <div class="col-lg-3 col-md-12">
                 <label class="small fw-bold text-muted mb-1">
                     <i data-lucide="search" style="width:12px" class="me-1"></i>Cari
@@ -46,7 +99,6 @@
                 </div>
             </div>
 
-            <!-- Gudang Pengirim -->
             <div class="col-lg-2 col-md-4">
                 <label class="small fw-bold text-muted mb-1">
                     <i data-lucide="warehouse" style="width:12px" class="me-1"></i>Gudang Pengirim
@@ -58,7 +110,6 @@
                 </select>
             </div>
 
-            <!-- Cabang Penerima -->
             <div class="col-lg-2 col-md-4">
                 <label class="small fw-bold text-muted mb-1">
                     <i data-lucide="store" style="width:12px" class="me-1"></i>Cabang Penerima
@@ -70,7 +121,6 @@
                 </select>
             </div>
 
-            <!-- Rentang Tanggal -->
             <div class="col-lg-3 col-md-4">
                 <label class="small fw-bold text-muted mb-1">
                     <i data-lucide="calendar" style="width:12px" class="me-1"></i>Rentang Tanggal
@@ -84,7 +134,6 @@
                 </div>
             </div>
 
-            <!-- Tombol -->
             <div class="col-lg-2 d-flex gap-2">
                 <button class="btn btn-success btn-sm w-100 fw-bold rounded-3 shadow-sm
                                d-flex align-items-center justify-content-center gap-1"
@@ -122,7 +171,6 @@
     <div v-else v-for="group in paginatedGroups" :key="group.cabang_id" class="mb-4">
         <div class="glass-panel border-0 shadow-sm bg-white overflow-hidden" style="border-radius:20px">
 
-            <!-- Cabang Header Bar -->
             <div class="cabang-header d-flex align-items-center justify-content-between flex-wrap gap-2 px-4 py-3">
                 <div class="d-flex align-items-center gap-3">
                     <div class="cabang-header-icon">
@@ -144,7 +192,6 @@
                 </button>
             </div>
 
-            <!-- Tabel rows -->
             <div v-show="!collapsed.includes(group.cabang_id)">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
@@ -154,44 +201,38 @@
                                 <th class="py-3 border-0 small text-uppercase fw-bolder">Kode Pengiriman</th>
                                 <th class="py-3 border-0 small text-uppercase fw-bolder th-gudang">
                                     <span class="d-flex align-items-center gap-1">
-                                        <i data-lucide="warehouse" style="width:12px"></i>
-                                        Gudang Pengirim
+                                        <i data-lucide="warehouse" style="width:12px"></i> Gudang Pengirim
                                     </span>
                                 </th>
                                 <th class="py-3 border-0 small text-uppercase fw-bolder th-toko">
                                     <span class="d-flex align-items-center gap-1">
-                                        <i data-lucide="store" style="width:12px"></i>
-                                        Cabang Penerima
+                                        <i data-lucide="store" style="width:12px"></i> Cabang Penerima
                                     </span>
                                 </th>
                                 <th class="py-3 border-0 small text-uppercase fw-bolder">Waktu Masuk</th>
+                                <th class="py-3 border-0 small text-uppercase fw-bolder text-center">Status</th>
                                 <th class="pe-4 py-3 border-0 small text-uppercase fw-bolder text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-if="group.rows.length === 0">
-                                <td colspan="6" class="text-center py-4 text-muted small">Tidak ada data</td>
+                                <td colspan="7" class="text-center py-4 text-muted small">Tidak ada data</td>
                             </tr>
                             <tr v-else v-for="row in group.rows" :key="row.id"
-                                class="border-bottom border-light row-item">
+                                class="border-bottom border-light row-item"
+                                :class="{'row-void': row.status === 'dibatalkan'}">
 
-                                <!-- Kode Masuk -->
                                 <td class="ps-4">
                                     <span class="badge bg-light text-dark fw-bolder border px-2 py-1 font-mono"
-                                        style="font-size:.75rem">
-                                        {{ row.kode_masuk }}
-                                    </span>
+                                        style="font-size:.75rem">{{ row.kode_masuk }}</span>
                                 </td>
 
-                                <!-- Kode Pengiriman -->
                                 <td>
-                                    <span class="font-mono fw-semibold text-muted"
-                                        style="font-size:.75rem">
+                                    <span class="font-mono fw-semibold text-muted" style="font-size:.75rem">
                                         {{ row.kode_pengiriman || '—' }}
                                     </span>
                                 </td>
 
-                                <!-- Gudang Pengirim + Operator Kirim -->
                                 <td>
                                     <div class="fw-semibold text-dark small">{{ row.nama_gudang || '-' }}</div>
                                     <div class="d-flex align-items-center gap-1 mt-1">
@@ -204,7 +245,6 @@
                                     </div>
                                 </td>
 
-                                <!-- Cabang Penerima + Operator Masuk -->
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="store-avatar">
@@ -224,31 +264,49 @@
                                     </div>
                                 </td>
 
-                                <!-- Waktu Masuk -->
                                 <td>
                                     <div class="fw-semibold text-dark" style="font-size:12px">
                                         {{ formatDate(row.waktu_masuk) }}
                                     </div>
                                 </td>
 
+                                <!-- Status -->
+                                <td class="text-center">
+                                    <span v-if="row.status === 'dibatalkan'"
+                                        class="status-badge badge-void d-inline-flex align-items-center gap-1"
+                                        :title="row.reason ? 'Alasan: ' + row.reason : ''">
+                                        <i data-lucide="ban" style="width:11px"></i> Dibatalkan
+                                    </span>
+                                    <span v-else class="status-badge badge-selesai d-inline-flex align-items-center gap-1">
+                                        <i data-lucide="check-circle" style="width:11px"></i> Selesai
+                                    </span>
+                                </td>
+
                                 <!-- Aksi -->
                                 <td class="text-center pe-4">
-                                    <a :href="detailUrl(row.id)"
-                                        class="btn btn-sm btn-outline-success rounded-3 px-3 py-1 fw-semibold"
-                                        style="font-size:.75rem;white-space:nowrap">
-                                        <i data-lucide="eye" style="width:13px" class="me-1"></i> Detail
-                                    </a>
+                                    <div class="d-flex align-items-center justify-content-center gap-2">
+                                        <a :href="detailUrl(row.id)"
+                                            class="btn btn-sm btn-outline-success rounded-3 px-3 py-1 fw-semibold"
+                                            style="font-size:.75rem;white-space:nowrap">
+                                            <i data-lucide="eye" style="width:13px" class="me-1"></i> Detail
+                                        </a>
+                                        <button v-if="canVoid && row.status !== 'dibatalkan'"
+                                            class="btn btn-sm btn-outline-danger rounded-3 px-3 py-1 fw-semibold"
+                                            style="font-size:.75rem;white-space:nowrap"
+                                            @click="openVoidModal(row)">
+                                            <i data-lucide="ban" style="width:13px" class="me-1"></i> Void
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
-
         </div>
     </div>
 
-    <!-- ══ FOOTER: pagination ════════════════════════════════════════════════ -->
+    <!-- ══ PAGINATION ════════════════════════════════════════════════════════ -->
     <div class="glass-panel border-0 shadow-sm bg-white p-4
                 d-flex justify-content-between align-items-center flex-wrap gap-3"
         style="border-radius:16px">
@@ -287,6 +345,21 @@
 
     .font-mono {
         font-family: 'Courier New', monospace;
+    }
+
+    .toast {
+        min-width: 280px;
+        border-radius: 12px;
+    }
+
+    .toast-success {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: #fff;
+    }
+
+    .toast-error {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: #fff;
     }
 
     .cabang-header {
@@ -333,6 +406,14 @@
         background: #f0fdf4 !important;
     }
 
+    .row-void td {
+        opacity: .6;
+    }
+
+    .row-void:hover {
+        background: #fff5f5 !important;
+    }
+
     .op-avatar {
         width: 18px;
         height: 18px;
@@ -361,6 +442,27 @@
         display: grid;
         place-items: center;
         flex-shrink: 0;
+    }
+
+    .status-badge {
+        font-size: .7rem;
+        font-weight: 700;
+        padding: 3px 9px;
+        border-radius: 20px;
+        border: 1px solid;
+    }
+
+    .badge-selesai {
+        background: #dcfce7;
+        color: #15803d;
+        border-color: #bbf7d0;
+    }
+
+    .badge-void {
+        background: #fee2e2;
+        color: #b91c1c;
+        border-color: #fecaca;
+        cursor: help;
     }
 
     .page-link {
@@ -397,27 +499,31 @@
                     gudang_id: '',
                     cabang_id: '',
                 },
+                canVoid: <?= in_array(session()->get('role'), ['owner', 'admin']) ? 'true' : 'false' ?>,
+                voidTarget: null,
+                voidReason: '',
+                voidReasonError: '',
+                voidLoading: false,
+                modalVoidInst: null,
+                toasts: [],
+                toastId: 0,
             };
         },
 
         computed: {
-            /* Grup per cabang penerima */
             groupedByCabang() {
                 const map = new Map();
                 this.allRows.forEach(row => {
                     const key = row.cabang_id || '__unknown__';
-                    if (!map.has(key)) {
-                        map.set(key, {
-                            cabang_id: key,
-                            nama_cabang: row.nama_cabang || '(Tidak Diketahui)',
-                            rows: [],
-                        });
-                    }
+                    if (!map.has(key)) map.set(key, {
+                        cabang_id: key,
+                        nama_cabang: row.nama_cabang || '(Tidak Diketahui)',
+                        rows: []
+                    });
                     map.get(key).rows.push(row);
                 });
                 return Array.from(map.values());
             },
-
             filteredGroups() {
                 if (!this.search) return this.groupedByCabang;
                 const s = this.search.toLowerCase();
@@ -436,7 +542,6 @@
                     } : null;
                 }).filter(Boolean);
             },
-
             totalPage() {
                 return Math.ceil(this.filteredGroups.length / this.perPage);
             },
@@ -454,7 +559,7 @@
                 this.loading = true;
                 try {
                     const res = await axios.get('<?= base_url('laporan/barang-masuk/list') ?>', {
-                        params: this.filter,
+                        params: this.filter
                     });
                     this.allRows = res.data.data;
                     this.gudangList = res.data.gudang_list;
@@ -467,33 +572,28 @@
                     this.loading = false;
                 }
             },
-
             resetFilter() {
                 this.filter = {
                     tgl_awal: '<?= date('Y-m-01') ?>',
                     tgl_akhir: '<?= date('Y-m-d') ?>',
                     gudang_id: '',
-                    cabang_id: '',
+                    cabang_id: ''
                 };
                 this.search = '';
                 this.load();
             },
-
             toggleCabang(id) {
                 const idx = this.collapsed.indexOf(id);
                 if (idx === -1) this.collapsed.push(id);
                 else this.collapsed.splice(idx, 1);
                 this.$nextTick(() => lucide.createIcons());
             },
-
             detailUrl(id) {
                 return `<?= base_url('laporan/barang-masuk/detail') ?>/${id}`;
             },
-
             uniqueGudang(rows) {
                 return new Set(rows.map(r => r.gudang_id).filter(Boolean)).size;
             },
-
             formatDate(d) {
                 if (!d) return '-';
                 return new Date(d).toLocaleDateString('id-ID', {
@@ -501,42 +601,67 @@
                     month: 'short',
                     year: 'numeric',
                     hour: '2-digit',
-                    minute: '2-digit',
+                    minute: '2-digit'
                 });
             },
-
-            exportCSV() {
-                if (!this.filteredGroups.length) return;
-                const headers = [
-                    'Cabang Penerima', 'Kode Masuk', 'Kode Pengiriman',
-                    'Gudang Pengirim', 'Operator Pengirim',
-                    'Operator Penerima', 'Waktu Masuk',
-                ];
-                const rows = [];
-                this.filteredGroups.forEach(group => {
-                    group.rows.forEach(r => {
-                        rows.push([
-                            group.nama_cabang,
-                            r.kode_masuk,
-                            r.kode_pengiriman || '',
-                            r.nama_gudang || '',
-                            r.nama_operator_kirim || '',
-                            r.nama_operator_masuk || '',
-                            r.waktu_masuk,
-                        ]);
-                    });
-                });
-                const csv = [headers, ...rows]
-                    .map(r => r.map(v => `"${v ?? ''}"`).join(','))
-                    .join('\n');
-                const a = document.createElement('a');
-                a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csv);
-                a.download = `laporan_barang_masuk_${new Date().toISOString().slice(0, 10)}.csv`;
-                a.click();
+            showToast(message, type = 'success') {
+                const icons = {
+                    success: 'check-circle',
+                    error: 'x-circle'
+                };
+                const t = {
+                    id: this.toastId++,
+                    message,
+                    type,
+                    icon: icons[type] ?? 'info'
+                };
+                this.toasts.push(t);
+                setTimeout(() => {
+                    const i = this.toasts.findIndex(x => x.id === t.id);
+                    if (i > -1) this.toasts.splice(i, 1);
+                }, 4000);
+                this.$nextTick(() => lucide.createIcons());
+            },
+            openVoidModal(row) {
+                this.voidTarget = row;
+                this.voidReason = '';
+                this.voidReasonError = '';
+                this.modalVoidInst.show();
+                this.$nextTick(() => lucide.createIcons());
+            },
+            async submitVoid() {
+                this.voidReasonError = '';
+                if (!this.voidReason.trim()) {
+                    this.voidReasonError = 'Alasan void wajib diisi';
+                    return;
+                }
+                this.voidLoading = true;
+                try {
+                    const res = await axios.post(
+                        `<?= base_url('laporan/barang-masuk/void') ?>/${this.voidTarget.id}`, {
+                            reason: this.voidReason.trim()
+                        }
+                    );
+                    const idx = this.allRows.findIndex(r => r.id === this.voidTarget.id);
+                    if (idx > -1) {
+                        this.allRows[idx].status = 'dibatalkan';
+                        this.allRows[idx].reason = this.voidReason.trim();
+                        this.allRows[idx].nama_voided_by = res.data.nama_voided_by;
+                        this.allRows[idx].voided_at = res.data.voided_at;
+                    }
+                    this.modalVoidInst.hide();
+                    this.showToast(`${this.voidTarget.kode_masuk} berhasil di-void`, 'success');
+                    this.$nextTick(() => lucide.createIcons());
+                } catch (err) {
+                    this.showToast(err.response?.data?.message || 'Gagal melakukan void', 'error');
+                } finally {
+                    this.voidLoading = false;
+                }
             },
         },
 
         mounted() {
+            this.modalVoidInst = new bootstrap.Modal(document.getElementById('modalVoid'));
             this.load();
             lucide.createIcons();
         },

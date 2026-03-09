@@ -151,29 +151,46 @@ class PenerimaanGudang extends BaseController
 
             $penerimaan_id = $this->db->insertID();
 
+            // Ambil semua sj_item sekaligus untuk lookup satuan_id yang akurat
+            // — tidak bergantung pada frontend yang mungkin tidak mengirim satuan_id
+            $sjItems = $this->db->table('surat_jalan_item')
+                ->where('surat_jalan_id', $surat_jalan_id)
+                ->get()->getResultArray();
+            $satuanMap = [];
+            foreach ($sjItems as $sji) {
+                $satuanMap[(int)$sji['barang_id']] = (int)$sji['satuan_id'];
+            }
+
             foreach ($items as $item) {
                 $qty_diterima = (int) $item['qty_diterima'];
                 $qty_dipesan  = (int)($item['qty_dipesan'] ?? 1);
+                $barang_id    = (int) $item['barang_id'];
 
                 $this->db->table('penerimaan_gudang_item')->insert([
                     'penerimaan_gudang_id' => $penerimaan_id,
-                    'barang_id'            => $item['barang_id'],
+                    'barang_id'            => $barang_id,
                     'qty_dipesan'          => $qty_dipesan,
                     'qty_diterima'         => $qty_diterima,
                 ]);
 
                 $stok = $this->db->table('stok_gudang')
-                    ->where('gudang_id', $gudang_id)->where('barang_id', $item['barang_id'])
+                    ->where('gudang_id', $gudang_id)
+                    ->where('barang_id', $barang_id)
                     ->get()->getRow();
 
                 if ($stok) {
-                    $this->db->table('stok_gudang')->where('id', $stok->id)
+                    $this->db->table('stok_gudang')
+                        ->where('id', $stok->id)
                         ->update(['stock' => $stok->stock + $qty_diterima]);
                 } else {
+                    // satuan_id diambil dari surat_jalan_item di DB (bukan dari payload frontend)
+                    $satuan_id = $satuanMap[$barang_id] ?? null;
+
                     $this->db->table('stok_gudang')->insert([
-                        'gudang_id' => $gudang_id,
-                        'barang_id' => $item['barang_id'],
-                        'stock'     => $qty_diterima,
+                        'gudang_id'  => $gudang_id,
+                        'barang_id'  => $barang_id,
+                        'satuan_id'  => $satuan_id,
+                        'stock'      => $qty_diterima,
                     ]);
                 }
             }

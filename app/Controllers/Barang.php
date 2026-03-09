@@ -82,7 +82,26 @@ class Barang extends ResourceController
             return $this->fail($this->validator->getErrors());
         }
 
-        $this->model->insert($this->request->getVar());
+        $barangId = $this->model->insert($this->request->getVar(), true);
+
+        $db = \Config\Database::connect();
+
+        // Auto-insert ke inventory semua cabang (toko) dengan stok 0
+        $semuaCabang = $db->table('cabang')->get()->getResultArray();
+        foreach ($semuaCabang as $cabang) {
+            // Hindari duplikat jika sudah ada
+            $exists = $db->table('inventory')
+                ->where('cabang_id', $cabang['id'])
+                ->where('barang_id', $barangId)
+                ->countAllResults();
+            if (!$exists) {
+                $db->table('inventory')->insert([
+                    'cabang_id' => $cabang['id'],
+                    'barang_id' => $barangId,
+                    'stock'     => 0,
+                ]);
+            }
+        }
 
         return $this->respond(['status' => true, 'message' => 'Barang baru berhasil disimpan']);
     }

@@ -23,9 +23,7 @@
     <!-- LAYOUT UTAMA: 2 KOLOM SIDE BY SIDE -->
     <div class="pos-layout flex-fill" style="min-height: 0;">
 
-        <!-- ============================================================ -->
-        <!-- KOLOM KIRI 25%: Header info + Customer + Input produk        -->
-        <!-- ============================================================ -->
+        <!-- KOLOM KIRI 25% -->
         <div class="pos-left glass-panel d-flex flex-column position-relative">
 
             <!-- LOCK OVERLAY -->
@@ -62,7 +60,7 @@
                     <div v-else class="badge-modern w-100 justify-content-center"
                         style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
                         <i data-lucide="check-circle" style="width: 16px;"></i>
-                        Transaksi #{{ activeId }} — Aktif
+                        Transaksi #{{ activeId }} &mdash; Aktif
                     </div>
                 </div>
 
@@ -208,15 +206,14 @@
                     </small>
                     <small class="text-muted" style="font-size: 0.7rem;">
                         <kbd>Alt+P</kbd> Bayar &nbsp;
-                        <kbd>Alt+M</kbd> Toggle mode
+                        <kbd>Alt+M</kbd> Toggle mode &nbsp;
+                        <kbd>Alt+D</kbd> Draft
                     </small>
                 </div>
             </div>
         </div>
 
-        <!-- ============================================================ -->
-        <!-- KOLOM KANAN 75%: Keranjang belanja full height + scroll       -->
-        <!-- ============================================================ -->
+        <!-- KOLOM KANAN 75% -->
         <div class="pos-right glass-panel d-flex flex-column" style="min-height: 0;">
 
             <!-- Header keranjang -->
@@ -226,13 +223,27 @@
                     Keranjang Belanja
                     <span class="badge bg-primary rounded-pill ms-1">{{ cart.length }}</span>
                 </h5>
-                <span v-if="totalDiskonItem > 0" class="badge-hemat">
-                    <i data-lucide="zap" style="width: 11px;"></i>
-                    Hemat Rp {{ format(totalDiskonItem) }}
-                </span>
+                <div class="d-flex align-items-center gap-2">
+                    <span v-if="totalDiskonItem > 0" class="badge-hemat">
+                        <i data-lucide="zap" style="width: 11px;"></i>
+                        Hemat Rp {{ format(totalDiskonItem) }}
+                    </span>
+                    <!-- Tombol Draft — Alt+D -->
+                    <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                        style="border-radius: 8px; font-size: 0.78rem; font-weight: 600;"
+                        @click="openDraftModal"
+                        title="Lihat Draft (Alt+D)">
+                        <i data-lucide="file-clock" style="width: 14px;"></i>
+                        Draft
+                        <span v-if="draftCount > 0"
+                            class="badge bg-secondary rounded-pill"
+                            style="font-size: 0.65rem;">{{ draftCount }}</span>
+                        <small class="opacity-50 ms-1">(Alt+D)</small>
+                    </button>
+                </div>
             </div>
 
-            <!-- Tabel keranjang — scroll di sini -->
+            <!-- Tabel keranjang -->
             <div class="flex-fill overflow-auto" style="min-height: 0;">
                 <table class="table table-hover mb-0 modern-table">
                     <thead class="table-light sticky-top">
@@ -357,14 +368,11 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
-
-                <!-- Summary -->
                 <div class="alert alert-light border-0 mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
                     <div class="row align-items-center">
                         <div class="col">
                             <small class="opacity-75">Total Belanja</small>
                             <h3 class="mb-0 fw-bold">Rp {{ format(total) }}</h3>
-                            <!-- Info hemat diskon -->
                             <div v-if="totalDiskonItem > 0" class="mt-1">
                                 <small class="opacity-90" style="background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 20px;">
                                     <i data-lucide="zap" style="width: 10px;"></i>
@@ -382,7 +390,6 @@
                 </div>
 
                 <div class="row g-3">
-                    <!-- Jenis Pembayaran -->
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Metode Pembayaran</label>
                         <select class="form-select form-control-modern" v-model="jenisBayar" ref="selectJenisBayar">
@@ -392,19 +399,11 @@
                             <option value="transfer">Transfer Bank</option>
                         </select>
                     </div>
-
-                    <!-- Diskon -->
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Diskon Tambahan (Rp)</label>
-                        <input type="number"
-                            ref="inputDiskon"
-                            class="form-control form-control-modern"
-                            v-model.number="diskon"
-                            min="0"
-                            placeholder="0">
+                        <input type="number" ref="inputDiskon" class="form-control form-control-modern"
+                            v-model.number="diskon" min="0" placeholder="0">
                     </div>
-
-                    <!-- Total Setelah Diskon -->
                     <div class="col-12">
                         <div class="p-3 rounded" style="background: rgba(0, 200, 80, 0.1);">
                             <div class="d-flex justify-content-between align-items-center">
@@ -413,49 +412,36 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Nominal Bayar -->
                     <div class="col-12">
                         <label class="form-label fw-semibold">Nominal Bayar</label>
-                        <input type="number"
-                            ref="inputBayar"
+                        <input type="number" ref="inputBayar"
                             class="form-control form-control-modern form-control-lg text-end fw-bold"
                             style="font-size: 1.5rem;"
-                            v-model.number="bayar"
-                            min="0"
-                            placeholder="0"
+                            v-model.number="bayar" min="0" placeholder="0"
                             @input="hitungKembalian">
                     </div>
-
-                    <!-- Kembalian -->
                     <div class="col-12">
                         <div class="p-3 rounded"
                             :style="kembalian >= 0 ? 'background: rgba(0, 103, 192, 0.1);' : 'background: rgba(220, 53, 69, 0.1);'">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="fw-semibold">Kembalian:</span>
-                                <span class="fw-bold fs-4"
-                                    :class="kembalian >= 0 ? 'text-primary' : 'text-danger'">
+                                <span class="fw-bold fs-4" :class="kembalian >= 0 ? 'text-primary' : 'text-danger'">
                                     Rp {{ format(kembalian) }}
                                 </span>
                             </div>
                         </div>
                     </div>
                 </div>
-
             </div>
             <div class="modal-footer border-0 pt-0">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">
-                    Batal
-                </button>
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
                 <form method="post" action="<?= base_url('penjualan/finalisasi') ?>">
                     <input type="hidden" name="customer_id" :value="selectedCustomer?.id || ''">
                     <input type="hidden" name="jenis_bayar" :value="jenisBayar">
                     <input type="hidden" name="diskon" :value="diskon">
                     <input type="hidden" name="bayar" :value="bayar">
                     <input type="hidden" name="kembalian" :value="kembalian">
-
-                    <button type="submit"
-                        class="btn btn-primary px-4 modern-btn"
+                    <button type="submit" class="btn btn-primary px-4 modern-btn"
                         ref="btnSubmit"
                         :disabled="kembalian < 0 || bayar == 0">
                         <i data-lucide="check-circle" style="width: 18px;"></i>
@@ -488,9 +474,96 @@
     </div>
 </div>
 
-<style>
-    /* ========== ORIGINAL STYLES (tidak diubah) ========== */
+<!-- ================================================================ -->
+<!-- MODAL DRAFT — Alt+D                                               -->
+<!-- ================================================================ -->
+<div class="modal fade" id="modalDraft" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg modern-modal">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                    <i data-lucide="file-clock" style="width: 22px;"></i>
+                    Draft Transaksi Saya
+                    <span v-if="draftCount > 0" class="badge bg-secondary rounded-pill ms-1"
+                        style="font-size: 0.7rem;">{{ draftCount }}</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
 
+                <!-- Loading -->
+                <div v-if="draftLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="text-muted mt-3 small mb-0">Memuat draft...</p>
+                </div>
+
+                <!-- Kosong -->
+                <div v-else-if="draftList.length === 0" class="text-center py-5">
+                    <i data-lucide="file-x" style="width: 52px; height: 52px; color: #cbd5e1;"></i>
+                    <p class="fw-semibold text-muted mt-3 mb-1">Tidak ada draft tersimpan</p>
+                    <p class="text-muted small mb-0">Draft transaksi Anda akan muncul di sini</p>
+                </div>
+
+                <!-- List -->
+                <div v-else class="d-flex flex-column gap-2">
+                    <div v-for="d in draftList" :key="d.id"
+                        class="draft-item d-flex align-items-center gap-3 p-3 rounded-3 border">
+
+                        <!-- Icon -->
+                        <div class="draft-icon flex-shrink-0">
+                            <i data-lucide="receipt" style="width: 18px;"></i>
+                        </div>
+
+                        <!-- Info -->
+                        <div class="flex-fill min-w-0">
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="fw-bold text-dark">Draft #{{ d.id }}</span>
+                                <span v-if="d.id == activeId"
+                                    class="badge bg-success"
+                                    style="font-size: 0.65rem;">Aktif</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="small text-muted">
+                                    <i data-lucide="shopping-cart" style="width: 11px;"></i>
+                                    {{ d.jumlah_item }} item
+                                </span>
+                                <span class="text-muted small">&#183;</span>
+                                <span class="small fw-bold text-primary">Rp {{ format(d.nominal_penjualan) }}</span>
+                            </div>
+                            <div class="mt-1" style="font-size: 0.7rem; color: #94a3b8;">
+                                <i data-lucide="clock" style="width: 10px;"></i>
+                                {{ d.created_label }}
+                            </div>
+                        </div>
+
+                        <!-- Aksi -->
+                        <div class="d-flex gap-2 flex-shrink-0">
+                            <button class="btn btn-sm btn-primary d-flex align-items-center gap-1"
+                                style="border-radius: 8px; font-size: 0.78rem; white-space: nowrap;"
+                                :disabled="d.id == activeId"
+                                @click="teruskanDraft(d.id)">
+                                <i data-lucide="play-circle" style="width: 13px;"></i>
+                                {{ d.id == activeId ? 'Aktif' : 'Teruskan' }}
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
+                                style="border-radius: 8px; font-size: 0.78rem;"
+                                @click="hapusDraft(d.id)">
+                                <i data-lucide="trash-2" style="width: 13px;"></i>
+                                Hapus
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
     .toast {
         min-width: 300px;
         border-radius: 12px;
@@ -593,12 +666,6 @@
             opacity: 1;
             transform: translateY(0);
         }
-    }
-
-    .blur-content {
-        pointer-events: none;
-        opacity: 0.5;
-        filter: blur(2px);
     }
 
     .form-control-modern {
@@ -841,14 +908,13 @@
         display: none;
     }
 
-    /* ========== LAYOUT POS 2 KOLOM ========== */
+    /* ========== LAYOUT ========== */
     html,
     body {
         height: 100%;
         overflow: hidden;
     }
 
-    /* Wrapper dari layout induk — sesuaikan jika nama class berbeda */
     .main-content,
     .content-wrapper,
     main,
@@ -864,7 +930,6 @@
         overflow: hidden;
     }
 
-    /* Container 2 kolom side by side */
     .pos-layout {
         display: flex;
         gap: 12px;
@@ -872,7 +937,6 @@
         overflow: hidden;
     }
 
-    /* Kolom kiri — 25% lebar, full height, tidak scroll halaman */
     .pos-left {
         width: 25%;
         min-width: 260px;
@@ -883,7 +947,6 @@
         flex-direction: column;
     }
 
-    /* Kolom kanan — sisa lebar (75%), full height, scroll di dalam */
     .pos-right {
         flex: 1;
         height: 100%;
@@ -892,16 +955,13 @@
         flex-direction: column;
     }
 
-    /* ========== TAMBAHAN: DISKON STYLES ========== */
-
-    /* Harga asli di dropdown — hijau */
+    /* ========== DISKON STYLES ========== */
     .price-original {
         color: #16a34a;
         font-weight: 600;
         font-size: 0.8rem;
     }
 
-    /* Badge diskon merah di dropdown */
     .price-discount-badge {
         display: inline-flex;
         align-items: center;
@@ -914,19 +974,16 @@
         border-radius: 20px;
     }
 
-    /* Harga setelah diskon — kuning/amber di dropdown */
     .price-after-discount {
         color: #d97706;
         font-weight: 800;
         font-size: 0.82rem;
     }
 
-    /* Cell harga di tabel keranjang */
     .price-cell {
         line-height: 1.4;
     }
 
-    /* Harga asli di tabel — hijau, coret */
     .price-original-cell {
         color: #16a34a;
         font-weight: 600;
@@ -935,7 +992,6 @@
         opacity: 0.85;
     }
 
-    /* Potongan diskon di tabel — merah */
     .price-diskon-cell {
         display: inline-flex;
         align-items: center;
@@ -949,14 +1005,12 @@
         margin: 2px 0;
     }
 
-    /* Harga akhir di tabel — kuning/amber */
     .price-final-cell {
         color: #d97706;
         font-weight: 800;
         font-size: 0.9rem;
     }
 
-    /* Subtotal asli di tabel — hijau, coret */
     .subtotal-original-cell {
         color: #16a34a;
         font-weight: 600;
@@ -965,14 +1019,12 @@
         opacity: 0.85;
     }
 
-    /* Subtotal akhir di tabel — kuning/amber bold */
     .subtotal-final-cell {
         color: #d97706;
         font-weight: 800;
         font-size: 0.95rem;
     }
 
-    /* Badge DISKON pada nama barang */
     .badge-diskon-aktif {
         display: inline-flex;
         align-items: center;
@@ -986,7 +1038,6 @@
         letter-spacing: 0.3px;
     }
 
-    /* Badge hemat di footer keranjang */
     .badge-hemat {
         display: inline-flex;
         align-items: center;
@@ -997,6 +1048,27 @@
         font-weight: 700;
         padding: 3px 10px;
         border-radius: 20px;
+    }
+
+    /* ========== DRAFT MODAL ========== */
+    .draft-item {
+        background: #f8fafc;
+        transition: background 0.2s;
+    }
+
+    .draft-item:hover {
+        background: #f1f5f9;
+    }
+
+    .draft-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
     }
 </style>
 
@@ -1047,9 +1119,15 @@
                 confirmMessage: '',
                 confirmCallback: null,
 
-                // Modal instance
+                // Modal instances
                 modalPembayaran: null,
-                modalConfirm: null
+                modalConfirm: null,
+                modalDraft: null,
+
+                // Draft
+                draftList: [],
+                draftCount: 0,
+                draftLoading: false
             }
         },
 
@@ -1060,13 +1138,9 @@
             kembalian() {
                 return this.bayar - this.grandTotal;
             },
-            // Total penghematan diskon dari semua item di keranjang
             totalDiskonItem() {
                 return this.cart.reduce((sum, item) => {
-                    if (item.nominal_diskon > 0) {
-                        return sum + (item.nominal_diskon * item.qty);
-                    }
-                    return sum;
+                    return item.nominal_diskon > 0 ? sum + (item.nominal_diskon * item.qty) : sum;
                 }, 0);
             }
         },
@@ -1086,25 +1160,22 @@
                     }
                     if (e.altKey && e.key === '1') {
                         e.preventDefault();
-                        const select = this.$refs.selectJenisBayar;
-                        if (select) {
-                            select.focus();
-                            const event = new KeyboardEvent('keydown', {
+                        const sel = this.$refs.selectJenisBayar;
+                        if (sel) {
+                            sel.focus();
+                            sel.dispatchEvent(new KeyboardEvent('keydown', {
                                 key: 'ArrowDown',
                                 code: 'ArrowDown',
                                 keyCode: 40,
                                 which: 40,
                                 bubbles: true
-                            });
-                            select.dispatchEvent(event);
+                            }));
                         }
                         return;
                     }
                     if (e.altKey && e.key === 'Enter') {
                         e.preventDefault();
-                        if (this.kembalian >= 0 && this.bayar > 0) {
-                            this.$refs.btnSubmit?.click();
-                        }
+                        if (this.kembalian >= 0 && this.bayar > 0) this.$refs.btnSubmit?.click();
                         return;
                     }
                     if (e.key === 'Escape') {
@@ -1123,26 +1194,24 @@
                         case 'b':
                             e.preventDefault();
                             this.mode = 'manual';
-                            this.$nextTick(() => {
-                                this.$refs.barangSearch?.focus();
-                            });
+                            this.$nextTick(() => this.$refs.barangSearch?.focus());
                             break;
                         case 's':
                             e.preventDefault();
                             this.mode = 'scan';
-                            this.$nextTick(() => {
-                                this.$refs.barcode?.focus();
-                            });
+                            this.$nextTick(() => this.$refs.barcode?.focus());
                             break;
                         case 'p':
                             e.preventDefault();
-                            if (this.cart.length > 0) {
-                                this.openModalPembayaran();
-                            }
+                            if (this.cart.length > 0) this.openModalPembayaran();
                             break;
                         case 'm':
                             e.preventDefault();
                             this.mode = this.mode === 'scan' ? 'manual' : 'scan';
+                            break;
+                        case 'd':
+                            e.preventDefault();
+                            this.openDraftModal();
                             break;
                     }
                 }
@@ -1150,9 +1219,7 @@
                 if (e.ctrlKey && e.key === '/') {
                     e.preventDefault();
                     this.mode = 'scan';
-                    this.$nextTick(() => {
-                        this.$refs.barcode?.focus();
-                    });
+                    this.$nextTick(() => this.$refs.barcode?.focus());
                 }
 
                 if (e.key === 'Escape') {
@@ -1175,12 +1242,8 @@
                     icon: icons[type]
                 };
                 this.toasts.push(toast);
-                setTimeout(() => {
-                    this.removeToast(0);
-                }, 4000);
-                this.$nextTick(() => {
-                    lucide.createIcons();
-                });
+                setTimeout(() => this.removeToast(0), 4000);
+                this.$nextTick(() => lucide.createIcons());
             },
             removeToast(index) {
                 this.toasts.splice(index, 1);
@@ -1206,6 +1269,7 @@
                     this.activeId = res.data.penjualan_id;
                     this.showToast('Transaksi dimulai!', 'success');
                     this.loadCart();
+                    this.refreshDraftCount();
                 } catch (err) {
                     this.showToast(err.response?.data?.message || 'Gagal memulai transaksi', 'error');
                 }
@@ -1220,8 +1284,7 @@
                 try {
                     const res = await axios.get('<?= base_url('penjualan/customers') ?>');
                     this.customerResults = res.data.filter(c =>
-                        c.nama.toLowerCase().includes(this.searchCustomer.toLowerCase())
-                    );
+                        c.nama.toLowerCase().includes(this.searchCustomer.toLowerCase()));
                 } catch (err) {
                     console.error(err);
                 }
@@ -1266,19 +1329,15 @@
             },
 
             // ========== SCAN BARCODE ==========
-            onBarcodePaste(event) {
+            onBarcodePaste() {
                 setTimeout(() => {
-                    if (this.barcode && this.barcode.trim().length > 0) {
-                        this.scanBarcode();
-                    }
+                    if (this.barcode?.trim().length > 0) this.scanBarcode();
                 }, 50);
             },
             onBarcodeInput() {
                 if (this.barcodeTimeout) clearTimeout(this.barcodeTimeout);
                 this.barcodeTimeout = setTimeout(() => {
-                    if (this.barcode.trim().length > 0) {
-                        this.scanBarcode();
-                    }
+                    if (this.barcode.trim().length > 0) this.scanBarcode();
                 }, 100);
             },
             async scanBarcode() {
@@ -1292,9 +1351,7 @@
                     this.barcode = '';
                     this.showToast('Item berhasil di-scan!', 'success');
                     this.loadCart();
-                    setTimeout(() => {
-                        this.$refs.barcode?.focus();
-                    }, 100);
+                    setTimeout(() => this.$refs.barcode?.focus(), 100);
                 } catch (err) {
                     this.showToast(err.response?.data?.message || 'Barcode tidak ditemukan', 'error');
                     this.barcode = '';
@@ -1313,7 +1370,6 @@
                     console.error(err);
                 }
             },
-
             async updateQty(id, qty) {
                 if (qty < 1) {
                     this.showToast('Qty minimal 1', 'warning');
@@ -1332,7 +1388,6 @@
                     this.loadCart();
                 }
             },
-
             async deleteItem(id) {
                 try {
                     const res = await axios.post(`<?= base_url('penjualan/delete-item') ?>/${id}`);
@@ -1344,13 +1399,68 @@
                 }
             },
 
+            // ========== DRAFT ==========
+            async refreshDraftCount() {
+                try {
+                    const res = await axios.get('<?= base_url('penjualan/list-draft') ?>');
+                    this.draftCount = (res.data.data ?? []).length;
+                } catch (_) {}
+            },
+
+            async openDraftModal() {
+                this.draftLoading = true;
+                this.modalDraft.show();
+                try {
+                    const res = await axios.get('<?= base_url('penjualan/list-draft') ?>');
+                    this.draftList = res.data.data ?? [];
+                    this.draftCount = this.draftList.length;
+                } catch (err) {
+                    this.showToast('Gagal memuat draft', 'error');
+                } finally {
+                    this.draftLoading = false;
+                    this.$nextTick(() => lucide.createIcons());
+                }
+            },
+
+            async teruskanDraft(id) {
+                try {
+                    await axios.post('<?= base_url('penjualan/teruskan-draft') ?>', {
+                        id
+                    });
+                    this.activeId = id;
+                    this.modalDraft.hide();
+                    this.loadCart();
+                    this.showToast('Draft #' + id + ' dilanjutkan', 'success');
+                } catch (err) {
+                    this.showToast(err.response?.data?.message || 'Gagal melanjutkan draft', 'error');
+                }
+            },
+
+            async hapusDraft(id) {
+                if (!confirm('Hapus draft #' + id + '? Semua item akan dikembalikan ke stok.')) return;
+                try {
+                    await axios.delete('<?= base_url('penjualan/hapus-draft') ?>/' + id);
+                    this.draftList = this.draftList.filter(d => d.id !== id);
+                    this.draftCount = this.draftList.length;
+                    if (this.activeId == id) {
+                        this.activeId = null;
+                        this.cart = [];
+                        this.total = 0;
+                    }
+                    this.showToast('Draft #' + id + ' dihapus', 'success');
+                    this.$nextTick(() => lucide.createIcons());
+                } catch (err) {
+                    this.showToast(err.response?.data?.message || 'Gagal hapus draft', 'error');
+                }
+            },
+
             // ========== PAYMENT ==========
             openModalPembayaran() {
                 this.bayar = this.grandTotal;
                 this.modalPembayaran.show();
             },
             hitungKembalian() {
-                /* handled by computed */ },
+                /* computed */ },
 
             // ========== HELPER ==========
             format(x) {
@@ -1360,12 +1470,9 @@
 
         mounted() {
             const modalEl = document.getElementById('modalPembayaran');
-
             modalEl.addEventListener('shown.bs.modal', () => {
                 this.isPaymentModalOpen = true;
-                this.$nextTick(() => {
-                    this.$refs.inputBayar?.focus();
-                });
+                this.$nextTick(() => this.$refs.inputBayar?.focus());
             });
             modalEl.addEventListener('hidden.bs.modal', () => {
                 this.isPaymentModalOpen = false;
@@ -1373,15 +1480,13 @@
 
             this.modalPembayaran = new bootstrap.Modal(document.getElementById('modalPembayaran'));
             this.modalConfirm = new bootstrap.Modal(document.getElementById('confirmDialog'));
+            this.modalDraft = new bootstrap.Modal(document.getElementById('modalDraft'));
 
-            if (this.activeId) {
-                this.loadCart();
-            }
+            if (this.activeId) this.loadCart();
+            this.refreshDraftCount();
 
             this.mode = 'scan';
-            this.$nextTick(() => {
-                this.$refs.barcode?.focus();
-            });
+            this.$nextTick(() => this.$refs.barcode?.focus());
 
             <?php if (session()->getFlashdata('cetak')): ?>
                 window.open("<?= session()->getFlashdata('cetak') ?>", "_blank");

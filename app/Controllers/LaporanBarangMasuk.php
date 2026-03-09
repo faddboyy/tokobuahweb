@@ -8,7 +8,7 @@ use CodeIgniter\HTTP\ResponseInterface;
 class LaporanBarangMasuk extends BaseController
 {
     // ─────────────────────────────────────────────────────────────
-    //  INDEX – halaman utama laporan
+    //  INDEX
     // ─────────────────────────────────────────────────────────────
     public function index()
     {
@@ -16,8 +16,7 @@ class LaporanBarangMasuk extends BaseController
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  LIST – endpoint AJAX untuk Vue
-    //  GET /laporan/barang-masuk/list
+    //  LIST  GET /laporan/barang-masuk/list
     // ─────────────────────────────────────────────────────────────
     public function list(): ResponseInterface
     {
@@ -28,29 +27,23 @@ class LaporanBarangMasuk extends BaseController
         $gudangId = $this->request->getGet('gudang_id');
         $cabangId = $this->request->getGet('cabang_id');
 
-        // ── Main query ──────────────────────────────────────────
-        // barang_masuk (bm)
-        //   → pengiriman_gudang (pg) untuk info gudang pengirim & operator pengirim
-        //   → gudang_utama (gu)
-        //   → users op_kirim  : operator pengiriman (gudang)
-        //   → users op_masuk  : operator barang masuk (toko)
-        //   → cabang (c)
         $builder = $db->table('barang_masuk bm')
             ->select([
                 'bm.id',
                 'bm.kode_masuk',
+                'bm.status',
+                'bm.reason',
+                'bm.voided_by',
+                'voider.nama        AS nama_voided_by',
+                'bm.voided_at',
                 'bm.pengiriman_gudang_id',
                 'pg.kode_pengiriman',
-                // Gudang pengirim
                 'pg.gudang_id',
                 'gu.nama            AS nama_gudang',
-                // Operator pengiriman (dari gudang)
                 'pg.operator_id     AS operator_kirim_id',
                 'op_kirim.nama      AS nama_operator_kirim',
-                // Cabang penerima
                 'bm.cabang_id',
                 'c.nama             AS nama_cabang',
-                // Operator barang masuk (petugas toko)
                 'bm.operator_id     AS operator_masuk_id',
                 'op_masuk.nama      AS nama_operator_masuk',
                 'bm.waktu_masuk',
@@ -60,20 +53,15 @@ class LaporanBarangMasuk extends BaseController
             ->join('users op_kirim',         'op_kirim.id = pg.operator_id',     'left')
             ->join('cabang c',               'c.id   = bm.cabang_id',            'left')
             ->join('users op_masuk',         'op_masuk.id = bm.operator_id',     'left')
+            ->join('users voider',           'voider.id = bm.voided_by',         'left')
             ->where('DATE(bm.waktu_masuk) >=', $tglAwal)
             ->where('DATE(bm.waktu_masuk) <=', $tglAkhir)
             ->orderBy('bm.waktu_masuk', 'DESC');
 
-        if ($gudangId) {
-            $builder->where('pg.gudang_id', $gudangId);
-        }
-        if ($cabangId) {
-            $builder->where('bm.cabang_id', $cabangId);
-        }
+        if ($gudangId) $builder->where('pg.gudang_id', $gudangId);
+        if ($cabangId) $builder->where('bm.cabang_id', $cabangId);
 
-        $rows = $builder->get()->getResultArray();
-
-        // ── Dropdown lists ──────────────────────────────────────
+        $rows       = $builder->get()->getResultArray();
         $gudangList = $db->table('gudang_utama')->select('id, nama')->get()->getResultArray();
         $cabangList = $db->table('cabang')->select('id, nama')->orderBy('nama')->get()->getResultArray();
 
@@ -85,8 +73,7 @@ class LaporanBarangMasuk extends BaseController
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  DETAIL – halaman detail satu barang masuk
-    //  GET /laporan/barang-masuk/detail/{id}
+    //  DETAIL page  GET /laporan/barang-masuk/detail/{id}
     // ─────────────────────────────────────────────────────────────
     public function detail(int $id)
     {
@@ -94,18 +81,21 @@ class LaporanBarangMasuk extends BaseController
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  GET-DETAIL – endpoint AJAX untuk Vue detail
-    //  GET /laporan/barang-masuk/get-detail/{id}
+    //  GET-DETAIL  GET /laporan/barang-masuk/get-detail/{id}
     // ─────────────────────────────────────────────────────────────
     public function getDetail(int $id): ResponseInterface
     {
         $db = \Config\Database::connect();
 
-        // ── Header ──────────────────────────────────────────────
         $header = $db->table('barang_masuk bm')
             ->select([
                 'bm.id',
                 'bm.kode_masuk',
+                'bm.status',
+                'bm.reason',
+                'bm.voided_by',
+                'voider.nama        AS nama_voided_by',
+                'bm.voided_at',
                 'bm.pengiriman_gudang_id',
                 'pg.kode_pengiriman',
                 'pg.gudang_id',
@@ -123,6 +113,7 @@ class LaporanBarangMasuk extends BaseController
             ->join('users op_kirim',         'op_kirim.id = pg.operator_id',     'left')
             ->join('cabang c',               'c.id   = bm.cabang_id',            'left')
             ->join('users op_masuk',         'op_masuk.id = bm.operator_id',     'left')
+            ->join('users voider',           'voider.id = bm.voided_by',         'left')
             ->where('bm.id', $id)
             ->get()->getRowArray();
 
@@ -130,11 +121,6 @@ class LaporanBarangMasuk extends BaseController
             return $this->response->setStatusCode(404)->setJSON(['message' => 'Not found']);
         }
 
-        // ── Items ────────────────────────────────────────────────
-        // qty_kiriman  = kiriman dari gudang (satuan_kirim)
-        // qty_aktual   = aktual diterima toko (satuan_simpan)
-        // selisih      = manual dari petugas
-        // satuan_kirim / satuan_simpan = kolom teks di barang_masuk_item
         $items = $db->table('barang_masuk_item bmi')
             ->select([
                 'bmi.id',
@@ -151,7 +137,6 @@ class LaporanBarangMasuk extends BaseController
             ->where('bmi.barang_masuk_id', $id)
             ->get()->getResultArray();
 
-        // cast numerik
         foreach ($items as &$item) {
             $item['qty_kiriman'] = (float) $item['qty_kiriman'];
             $item['qty_aktual']  = (float) $item['qty_aktual'];
@@ -163,5 +148,90 @@ class LaporanBarangMasuk extends BaseController
             'header' => $header,
             'items'  => $items,
         ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  VOID  POST /laporan/barang-masuk/void/{id}
+    //  Hanya owner / admin.
+    // ─────────────────────────────────────────────────────────────
+    public function void(int $id): ResponseInterface
+    {
+        $role        = session()->get('role');
+        $operator_id = (int) session()->get('user_id');
+
+        if (!in_array($role, ['owner', 'admin'])) {
+            return $this->response->setStatusCode(403)
+                ->setJSON(['message' => 'Akses ditolak. Hanya owner / admin yang dapat melakukan void.']);
+        }
+
+        $db = \Config\Database::connect();
+
+        $bm = $db->table('barang_masuk')->where('id', $id)->get()->getRow();
+        if (!$bm) {
+            return $this->response->setStatusCode(404)
+                ->setJSON(['message' => 'Data barang masuk tidak ditemukan']);
+        }
+        if (($bm->status ?? 'selesai') === 'dibatalkan') {
+            return $this->response->setStatusCode(422)
+                ->setJSON(['message' => 'Barang masuk ini sudah dibatalkan sebelumnya']);
+        }
+
+        $body   = $this->request->getJSON(true);
+        $reason = trim($body['reason'] ?? '');
+        if ($reason === '') {
+            return $this->response->setStatusCode(400)
+                ->setJSON(['message' => 'Alasan void (reason) wajib diisi']);
+        }
+
+        $items = $db->table('barang_masuk_item')
+            ->where('barang_masuk_id', $id)
+            ->get()->getResultArray();
+
+        if (empty($items)) {
+            return $this->response->setStatusCode(422)
+                ->setJSON(['message' => 'Tidak ada item pada barang masuk ini']);
+        }
+
+        $db->transBegin();
+        try {
+            foreach ($items as $item) {
+                $barang_id  = (int)   $item['barang_id'];
+                $qty_aktual = (float) $item['qty_aktual'];
+                $cabang_id  = (int)   $bm->cabang_id;
+
+                $inv = $db->table('inventory')
+                    ->where('barang_id', $barang_id)
+                    ->where('cabang_id', $cabang_id)
+                    ->get()->getRow();
+
+                if ($inv) {
+                    $db->table('inventory')
+                        ->where('id', $inv->id)
+                        ->update(['stock' => max(0, $inv->stock - $qty_aktual)]);
+                }
+            }
+
+            $db->table('barang_masuk')->where('id', $id)->update([
+                'status'    => 'dibatalkan',
+                'reason'    => $reason,
+                'voided_by' => $operator_id,
+                'voided_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            $db->transCommit();
+
+            // Ambil nama voider untuk dikembalikan ke frontend
+            $voider = $db->table('users')->select('nama')->where('id', $operator_id)->get()->getRow();
+
+            return $this->response->setJSON([
+                'status'         => true,
+                'message'        => 'Barang masuk berhasil di-void. Stok inventory telah dikembalikan.',
+                'nama_voided_by' => $voider?->nama ?? '',
+                'voided_at'      => date('Y-m-d H:i:s'),
+            ]);
+        } catch (\Throwable $e) {
+            $db->transRollback();
+            return $this->response->setStatusCode(500)->setJSON(['message' => $e->getMessage()]);
+        }
     }
 }

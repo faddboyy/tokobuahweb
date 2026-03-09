@@ -21,12 +21,12 @@
                         <?php endforeach; ?>
                     </select>
 
-                    <button v-if="isOwner"
+                    <!-- <button v-if="isOwner"
                         class="btn btn-primary px-3 shadow-sm d-flex align-items-center gap-2"
                         @click="openImportModal"
                         :disabled="!cabangTerpilih">
                         <i data-lucide="plus-circle" style="width:18px;"></i> Import
-                    </button>
+                    </button> -->
                 </div>
 
                 <p v-if="isPetugas" class="text-muted small mt-2 mb-0">
@@ -91,7 +91,7 @@
         <!-- State: belum pilih cabang -->
         <div v-if="!cabangTerpilih" class="text-center py-5">
             <i data-lucide="map-pin" class="text-muted mb-3" style="width:40px;height:40px;"></i>
-            <h6 class="text-muted fw-bold">Pilih Cabang untuk memuat data stok</h6>
+            <h6 class="text-muted fw-bold">Pilih Toko untuk memuat data stok</h6>
         </div>
 
         <!-- State: loading -->

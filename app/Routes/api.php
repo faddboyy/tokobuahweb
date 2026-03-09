@@ -53,6 +53,10 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {
         });
     });
 
+    $routes->get('penjualan/list-draft',        'Penjualan::listDraft');
+    $routes->post('penjualan/teruskan-draft',    'Penjualan::teruskanDraft');
+    $routes->delete('penjualan/hapus-draft/(:num)', 'Penjualan::hapusDraft/$1');
+
     $routes->get('aset-toko/list/(:num)',                   'AsetToko::list/$1');
     $routes->get('aset-toko/get-available-barang/(:num)',   'AsetToko::getAvailableBarang/$1');
     $routes->post('aset-toko/import',                       'AsetToko::import');
@@ -165,4 +169,5 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {
     $routes->get('laporan/barang-masuk/list',         'LaporanBarangMasuk::list');
     $routes->get('laporan/barang-masuk/detail/(:num)', 'LaporanBarangMasuk::detail/$1');
     $routes->get('laporan/barang-masuk/get-detail/(:num)', 'LaporanBarangMasuk::getDetail/$1');
+    $routes->post('laporan/barang-masuk/void/(:num)', 'LaporanBarangMasuk::void/$1');
 });
